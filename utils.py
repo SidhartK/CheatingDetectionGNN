@@ -1,4 +1,4 @@
-def cheating_probability(row1, row2, t_thresh=10, verbose = False):
+def cheating_probability(row1, row2, w1 = 0.2, w2 = 0.5, w3 = 0.3, t_thresh=10, verbose = False):
     """
     Calculates the probability of two users cheating based on answer similarity and timing similarity.
 
@@ -14,7 +14,6 @@ def cheating_probability(row1, row2, t_thresh=10, verbose = False):
     Returns:
     float: Probability of cheating between 0 and 1.
     """
-    w1, w2, w3 = 0.2, 0.5, 0.3
     # Correct/Incorrect Answer Matching (CIM)
     num_data_points = 10
     cim_matches = sum([row1[f'C{i}'] == row2[f'C{i}'] for i in range(1, num_data_points + 1)])
