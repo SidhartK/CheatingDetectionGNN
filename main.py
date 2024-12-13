@@ -17,10 +17,10 @@ writer_hetero = SummaryWriter(log_dir='runs/heterogat')
 writer_rgcn = SummaryWriter(log_dir='runs/rgcn')
 
 # 1. Heterogeneous GNN with GAT
-class HeteroGNN(torch.nn.Module):
+class HeteroGAT(torch.nn.Module):
     def __init__(self, metadata, in_channels, hidden_channels=[256, 64]):
     """
-    Initializes the HeteroGNN model with two heterogeneous graph attention convolutional layers
+    Initializes the HeteroGAT model with two heterogeneous graph attention convolutional layers
     and a linear layer for pairwise classification.
 
     Args:
@@ -41,7 +41,7 @@ class HeteroGNN(torch.nn.Module):
 
     def forward(self, x_dict, edge_index_dict):
         """
-        Forward pass of the HeteroGNN model.
+        Forward pass of the HeteroGAT model.
 
         Args:
             x_dict (dict): Node features for each node type.
@@ -180,31 +180,35 @@ if __name__ == '__main__':
     with open("data/data.pkl", "rb") as f:
         data, labels = pickle.load(f)
 
+    # Extract useful data from features
     num_nodes = data['node'].x.size(0)
     in_channels = data['node'].x.size(1)
     metadata = data.metadata()
-    hetero_model = HeteroGNN(metadata, in_channels=in_channels)
+    # Initialize the HeteroGAT and RelationalGCN model with the metadata and input channels
+    hetero_model = HeteroGAT(metadata, in_channels=in_channels)
+    # Initialize the RelationalGCN model with the number of relations and input channels
     relational_model = RelationalGCN(num_relations=len(metadata[1]), in_channels=in_channels)
 
-    num_positive = (labels[:, 2] == 1).sum().item()
-    num_negative = (labels[:, 2] == 0).sum().item()
-    pos_weight = num_negative / num_positive if num_positive > 0 else 1.0
-    print(f"Positive Weight: {pos_weight:.4f}")
+    # Define the heuristic and team loss criteria with the positive weight
     heuristic_criterion = torch.nn.BCEWithLogitsLoss(pos_weight=torch.tensor(25.0))
     team_criterion = torch.nn.BCEWithLogitsLoss(pos_weight=torch.tensor(10.0))
+    # Define a custom train loss function
     def train_loss_func(pred, target, reg_param=0.1):
         heuristic_rec_loss = heuristic_criterion(pred.flatten(), target[:, 2])
         team_rec_loss = team_criterion(pred.flatten(), target[:, 1])
         return (heuristic_rec_loss * reg_param) + team_rec_loss
 
+    # Define custom test loss function
     test_criterion = torch.nn.BCEWithLogitsLoss()
     def test_loss_func(pred, target, reg_param=0.1):
         label_rec_loss = test_criterion(pred.flatten(), target[:, 2])
         return label_rec_loss
 
+    # Initialize optimizers for both models
     optimizer_hetero = torch.optim.Adam(hetero_model.parameters(), lr=0.01)
     optimizer_relational = torch.optim.Adam(relational_model.parameters(), lr=0.01)
 
+    # Train the HeteroGAT model if specified
     if heterogat:
         print("-" * 50)
         start = time.time()
@@ -239,6 +243,7 @@ if __name__ == '__main__':
         print(f"Time taken: {time.time() - start:.2f}s")
         print("-" * 50)
 
+    # Train the RelationalGCN model if specified
     if rgcn:
         print("-" * 50)
         start = time.time()
