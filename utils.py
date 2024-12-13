@@ -1,4 +1,19 @@
-def cheating_probability(row1, row2, k1=0.5, k2=0.7, k3=0.6, t_thresh=10, verbose = False):
+def cheating_probability(row1, row2, t_thresh=10, verbose = False):
+    """
+    Calculates the probability of two users cheating based on answer similarity and timing similarity.
+
+    Parameters:
+    row1 (pd.Series): First user's data.
+    row2 (pd.Series): Second user's data.
+    k1 (float): Weight for correct/incorrect answer matching.
+    k2 (float): Weight for matching incorrect answers.
+    k3 (float): Weight for timing similarity.
+    t_thresh (int): Time threshold in seconds for considering two times as similar.
+    verbose (bool): Whether to print intermediate results.
+
+    Returns:
+    float: Probability of cheating between 0 and 1.
+    """
     w1, w2, w3 = 0.2, 0.5, 0.3
     # Correct/Incorrect Answer Matching (CIM)
     num_data_points = 10
@@ -21,7 +36,7 @@ def cheating_probability(row1, row2, k1=0.5, k2=0.7, k3=0.6, t_thresh=10, verbos
             # Updated time format to YYYY/MM/DD HH:MM:SS
             if abs((pd.to_datetime(row1[f'T{i}']) - pd.to_datetime(row2[f'T{i}'])).total_seconds()) <= t_thresh:
                 ts_matches += 1
-    p_ts = 1 - np.exp(-k3 * ts_matches)
+    p_ts = 1 - np.exp(-0.6 * ts_matches)
     
     # Combine probabilities
     cheating_prob = p_cim * w1 + p_mia * w2 + p_ts * w3
