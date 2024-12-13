@@ -3,7 +3,7 @@ import torch
 from torch_geometric.data import HeteroData
 import pandas as pd
 from tqdm import trange
-from heuristic import cheating_probability
+from utils import cheating_probability
 import os
 import pickle
 
