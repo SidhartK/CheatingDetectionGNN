@@ -19,6 +19,15 @@ writer_rgcn = SummaryWriter(log_dir='runs/rgcn')
 # 1. Heterogeneous GNN with GAT
 class HeteroGNN(torch.nn.Module):
     def __init__(self, metadata, in_channels, hidden_channels=[256, 64]):
+    """
+    Initializes the HeteroGNN model with two heterogeneous graph attention convolutional layers
+    and a linear layer for pairwise classification.
+
+    Args:
+        metadata (tuple): Contains metadata about types of nodes and edges in the heterogeneous graph.
+        in_channels (int): Number of input features for each node.
+        hidden_channels (list): List containing the number of hidden units for each layer.
+    """
         super().__init__()
         self.conv1 = HeteroConv({
             edge_type: GATConv(in_channels, hidden_channels[0], heads=2, concat=True) 
@@ -31,6 +40,19 @@ class HeteroGNN(torch.nn.Module):
         self.lin = Linear(hidden_channels[1] * 2, 1)  # Output layer for pairwise classification 
 
     def forward(self, x_dict, edge_index_dict):
+        """
+        Forward pass of the HeteroGNN model.
+
+        Args:
+            x_dict (dict): Node features for each node type.
+            edge_index_dict (dict): Edge indices for each edge type.
+
+        Returns:
+            torch.Tensor: Output of the model for pairwise classification.
+
+        Summary:
+            Performs two heterogeneous graph attention convolutional layers followed by a linear layer for pairwise classification.
+        """
         x_dict = self.conv1(x_dict, edge_index_dict)
         x_dict = {k: F.relu(x) for k, x in x_dict.items()}
         x_dict = self.conv2(x_dict, edge_index_dict)
@@ -43,6 +65,18 @@ class HeteroGNN(torch.nn.Module):
 # 2. Relational GCN
 class RelationalGCN(torch.nn.Module):
     def __init__(self, num_relations, in_channels, hidden_channels=[256, 64]):
+        """
+        __init__ method of RelationalGCN class.
+
+        Args:
+            num_relations (int): Number of edge types in the graph.
+            in_channels (int): Number of input features for each node.
+            hidden_channels (list): List containing the number of hidden units for each layer.
+
+        Summary:
+            Initializes the RelationalGCN model with the given number of relations, in_channels, and hidden_channels.
+        """
+
         super().__init__()
         self.conv1 = RGCNConv(in_channels, hidden_channels[0], num_relations=num_relations)
         self.conv2 = RGCNConv(hidden_channels[0], hidden_channels[0], num_relations=num_relations)
@@ -51,6 +85,20 @@ class RelationalGCN(torch.nn.Module):
         self.lin = Linear(hidden_channels[1], 1)  # Output layer for pairwise classification
 
     def forward(self, x, edge_index, edge_type):
+        """
+        Forward pass of the RelationalGCN model.
+
+        Args:
+            x (torch.Tensor): Node features.
+            edge_index (torch.Tensor): Edge indices.
+            edge_type (torch.Tensor): Edge types.
+
+        Returns:
+            torch.Tensor: Output of the model for pairwise classification.
+
+        Summary:
+            Performs four relational graph convolutional layers followed by a linear layer for pairwise classification.
+        """
         x = self.conv1(x, edge_index, edge_type)
         x = F.relu(x)
         x = self.conv2(x, edge_index, edge_type)
@@ -64,8 +112,26 @@ class RelationalGCN(torch.nn.Module):
         return self.lin(node_pairs)
 
 def evaluate_model(model, data, labels, loss_func, metadata, dict_format=False):
+    """
+    Evaluates the given model on the given data and labels using the given loss function.
+
+    Args:
+        model (nn.Module): The model to evaluate.
+        data (HeteroData): The data to evaluate on.
+        labels (torch.Tensor): The labels to evaluate against.
+        loss_func (nn.Module): The loss function to use.
+        metadata (HeteroData.metadata()): The metadata of the data.
+        dict_format (bool): Whether the data is in dictionary format or not.
+
+    Returns:
+        tuple: (loss, accuracy, precision, recall, f1, roc_auc)
+
+    Summary:
+        Evaluates the given model on the given data and labels using the given loss function and returns evaluation metrics.
+    """
     model.eval()
     with torch.no_grad():
+        # Make predictions on the data
         if dict_format:
             predictions = model(
                 x_dict={'node': data['node'].x},
@@ -87,7 +153,9 @@ def evaluate_model(model, data, labels, loss_func, metadata, dict_format=False):
                     ]
                 ),
             )
+        # Calculate loss
         loss = loss_func(predictions, labels)
+        # Calculate accuracy, precision, recall, f1, and roc_auc
         probs = torch.sigmoid(predictions).flatten()
         preds_binary = (probs > 0.5).long()
         true_labels = labels[:, 2].long()
@@ -109,7 +177,6 @@ def evaluate_model(model, data, labels, loss_func, metadata, dict_format=False):
         return loss.item(), accuracy, precision, recall, f1, roc_auc
     
 if __name__ == '__main__':
-
     with open("data/data.pkl", "rb") as f:
         data, labels = pickle.load(f)
 

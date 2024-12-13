@@ -9,7 +9,7 @@ import pickle
 
 
 def create_dataset(threshold = 0.5):
-    df = pd.read_csv("untorchified_data.csv")
+    df = pd.read_csv("raw_data.csv")
     data = HeteroData()
 
     data["node"].x = torch.tensor(df[[f"C{k}_{l}" for k in range(1, 11) for l in range(3)] + [f"A{k}_freq" for k in range(1, 11)] + [f"T{k}" for k in range(1, 11)]].to_numpy(), dtype=torch.float)
